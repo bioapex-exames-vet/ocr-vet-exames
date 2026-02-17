@@ -1,4 +1,4 @@
-import streamlit as st
+Simport streamlit as st
 from PIL import Image
 import time
 import easyocr
@@ -14,29 +14,25 @@ import datetime
 import re
 
 # =======================
-# CONFIGURAÇÕES
+# CONFIGURAÇÕES GERAIS
 # =======================
 
 st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 30
 
 # =======================
-# BANNER / LOGO
+# SESSION STATE INICIAL
 # =======================
-try:
-    logo = Image.open("logo_Bioapex.png")
-    st.image(logo, use_column_width=True)
-except:
-    st.write("🔹 Bioapex - Exames Veterinários")
-
-# =======================
-# SESSION EXPIRATION
-# =======================
-if "last_active" not in st.session_state:
-    st.session_state["last_active"] = time.time()
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
+if "last_active" not in st.session_state:
+    st.session_state["last_active"] = time.time()
+if "rerun_flag" not in st.session_state:
+    st.session_state["rerun_flag"] = False
 
+# =======================
+# FUNÇÃO DE TIMEOUT
+# =======================
 def check_session_timeout():
     now = time.time()
     if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
@@ -49,7 +45,14 @@ check_session_timeout()
 # =======================
 # LOGIN
 # =======================
-if not st.session_state["logado"]:
+if not st.session_state.get("logado"):
+    # BANNER / LOGO
+    try:
+        logo = Image.open("logo.png")  # Coloque logo.png no repo
+        st.image(logo, use_column_width=True)
+    except:
+        st.write("🔹 OCR Exames Veterinários")
+    
     st.title("🔐 Login")
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
@@ -57,15 +60,24 @@ if not st.session_state["logado"]:
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
-            st.experimental_rerun()
+            st.experimental_rerun()  # Rerun seguro após login
         else:
             st.error("Credenciais inválidas")
-    st.stop()
+    st.stop()  # não renderiza nada mais até login
 
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
 # =======================
 st.session_state["last_active"] = time.time()
+
+# =======================
+# BANNER/LOGO
+# =======================
+try:
+    logo = Image.open("logo.png")
+    st.image(logo, use_column_width=True)
+except:
+    st.write("🔹 OCR Exames Veterinários")
 
 # =======================
 # Configura Google Drive
