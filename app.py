@@ -34,7 +34,7 @@ if "last_active" not in st.session_state:
 now = time.time()
 if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
     st.session_state.clear()
-    st.warning("⏰ Sessão expirada. Faça login novamente.")
+    st.warning("⏰ Sessão expirada. Recarregue a página e faça login novamente.")
     st.stop()
 
 # =======================
