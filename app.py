@@ -21,7 +21,7 @@ st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 30
 
 # =======================
-# SESSION STATE INICIAL
+# SESSION STATE
 # =======================
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
@@ -31,16 +31,13 @@ if "rerun_flag" not in st.session_state:
     st.session_state["rerun_flag"] = False
 
 # =======================
-# FUNÇÃO DE TIMEOUT
+# TIMEOUT DE SESSÃO
 # =======================
-def check_session_timeout():
-    now = time.time()
-    if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
-        st.session_state.clear()
-        st.warning("⏰ Sessão expirada. Faça login novamente.")
-        st.stop()
-
-check_session_timeout()
+now = time.time()
+if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
+    st.session_state.clear()
+    st.warning("⏰ Sessão expirada. Faça login novamente.")
+    st.stop()
 
 # =======================
 # LOGIN
@@ -60,10 +57,16 @@ if not st.session_state.get("logado"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
-            st.experimental_rerun()
+            st.session_state["login_rerun"] = True
+            st.success("✅ Login realizado! Reiniciando app...")
+            st.stop()  # Para execução segura antes do rerun
         else:
             st.error("Credenciais inválidas")
     st.stop()
+
+if st.session_state.get("login_rerun"):
+    st.session_state["login_rerun"] = False
+    st.experimental_rerun()
 
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
