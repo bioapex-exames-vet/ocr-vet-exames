@@ -38,7 +38,7 @@ def check_session_timeout():
     if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
         st.session_state.clear()
         st.warning("⏰ Sessão expirada. Faça login novamente.")
-        st.experimental_rerun()
+        st.stop()
 
 check_session_timeout()
 
@@ -60,10 +60,10 @@ if not st.session_state.get("logado"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
-            st.experimental_rerun()  # Rerun seguro após login
+            st.experimental_rerun()
         else:
             st.error("Credenciais inválidas")
-    st.stop()  # não renderiza nada mais até login
+    st.stop()
 
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
