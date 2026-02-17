@@ -134,7 +134,7 @@ def enviar_email(destino, anexo):
 st.set_page_config(layout="wide")
 
 logo = Image.open("logo_Bioapex.png")
-st.image(logo, width=200)
+st.image(logo, use_column_width=True)
 st.title("Bioapex - Exames Veterinários")
 
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
