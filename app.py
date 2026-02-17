@@ -27,8 +27,6 @@ if "logado" not in st.session_state:
     st.session_state["logado"] = False
 if "last_active" not in st.session_state:
     st.session_state["last_active"] = time.time()
-if "rerun_flag" not in st.session_state:
-    st.session_state["rerun_flag"] = False
 
 # =======================
 # TIMEOUT DE SESSÃO
@@ -58,7 +56,7 @@ if not st.session_state.get("logado"):
             st.success("✅ Login realizado! Aguarde enquanto a página carrega...")
         else:
             st.error("Credenciais inválidas")
-        st.stop()
+    st.stop()
 
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
