@@ -56,7 +56,6 @@ if not st.session_state.get("logado"):
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
             st.rerun()
-            # st.success("✅ Login realizado! Bem-vindo!")
         else:
             st.error("Credenciais inválidas")
 
@@ -168,7 +167,6 @@ if st.session_state["logado"]:
         if st.button("🚪 Sair"):
             st.session_state.clear()
             st.rerun()
-    st.title("Bioapex - Exames Veterinários")
     st.session_state["last_active"] = time.time()
     logo = Image.open("logo_Bioapex.png")
     st.image(logo, use_column_width=True)
