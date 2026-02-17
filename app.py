@@ -162,22 +162,21 @@ def enviar_email(destino, anexo):
 # Interface
 # =======================
 if st.session_state["logado"]:
-    with st.empty():
-        st.session_state["last_active"] = time.time()
-        logo = Image.open("logo_Bioapex.png")
-        st.image(logo, use_column_width=True)
-        st.title("Bioapex - Exames Veterinários")
-        imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
-        nome = st.text_input("Nome do paciente")
-        tutor = st.text_input("Nome do tutor")
-        data = st.date_input("Data do exame")
-        email_destino = st.text_input("Enviar para email")
-    
-        if st.button("Processar"):
-            if imagem:
-                texto = realizar_ocr(imagem)
-                dados = extrair_dados(texto)
-                nome_docx = preencher_template(nome, numero, texto, dados)
-                gerar_pdf(texto, nome_docx.replace(".docx",""))
-                enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
-                st.success("Processamento concluído! DOCX e PDF salvos no Drive.")
+    st.session_state["last_active"] = time.time()
+    logo = Image.open("logo_Bioapex.png")
+    st.image(logo, use_column_width=True)
+    st.title("Bioapex - Exames Veterinários")
+    imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
+    nome = st.text_input("Nome do paciente")
+    tutor = st.text_input("Nome do tutor")
+    data = st.date_input("Data do exame")
+    email_destino = st.text_input("Enviar para email")
+
+    if st.button("Processar"):
+        if imagem:
+            texto = realizar_ocr(imagem)
+            dados = extrair_dados(texto)
+            nome_docx = preencher_template(nome, numero, texto, dados)
+            gerar_pdf(texto, nome_docx.replace(".docx",""))
+            enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
+            st.success("Processamento concluído! DOCX e PDF salvos no Drive.")
