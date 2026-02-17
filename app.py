@@ -48,10 +48,10 @@ check_session_timeout()
 if not st.session_state.get("logado"):
     # BANNER / LOGO
     try:
-        logo = Image.open("logo.png")  # Coloque logo.png no repo
+        logo = Image.open("logo_Bioapex.png")  # Coloque logo.png no repo
         st.image(logo, use_column_width=True)
     except:
-        st.write("🔹 OCR Exames Veterinários")
+        st.write("🔹 Bioapex - Exames Veterinários")
     
     st.title("🔐 Login")
     usuario = st.text_input("Usuário")
