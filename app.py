@@ -43,7 +43,6 @@ if st.session_state.get("last_active") and (now - st.session_state["last_active"
 # LOGIN
 # =======================
 if not st.session_state.get("logado"):
-    # BANNER / LOGO
     try:
         logo = Image.open("logo_Bioapex.png")  # Coloque logo.png no repo
         st.image(logo, use_column_width=True)
