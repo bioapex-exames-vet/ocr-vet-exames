@@ -42,7 +42,7 @@ if st.session_state.get("last_active") and (now - st.session_state["last_active"
 # =======================
 if not st.session_state.get("logado"):
     try:
-        logo = Image.open("logo_Bioapex.png")  # Coloque logo.png no repo
+        logo = Image.open("logo_Bioapex.png")
         st.image(logo, use_column_width=True)
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
@@ -53,6 +53,7 @@ if not st.session_state.get("logado"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
+            st.session_state["show_app"] = True
             st.success("✅ Login realizado! Aguarde enquanto a página carrega...")
         else:
             st.error("Credenciais inválidas")
@@ -160,10 +161,15 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-
-logo = Image.open("logo_Bioapex.png")
-st.image(logo, use_column_width=True)
-st.title("Bioapex - Exames Veterinários")
+if st.session_state.get("logado") or st.session_state.get("show_app"):
+    st.session_state["show_app"] = False
+    # Aqui começa o app principal
+    logo = Image.open("logo_Bioapex.png")
+    st.image(logo, use_column_width=True)
+    st.title("Bioapex - Exames Veterinários")
+    logo = Image.open("logo_Bioapex.png")
+    st.image(logo, use_column_width=True)
+    st.title("Bioapex - Exames Veterinários")
 
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
 nome = st.text_input("Nome do paciente")
