@@ -164,9 +164,8 @@ def enviar_email(destino, anexo):
 if st.session_state["logado"]:
     placeholder = st.empty()
     st.session_state["last_active"] = time.time()
-    try:
-        logo = Image.open("logo_Bioapex.png")
-        placeholder.image(logo, use_column_width=True)
+    logo = Image.open("logo_Bioapex.png")
+    placeholder.image(logo, use_column_width=True)
     placeholder.title("Bioapex - Exames Veterinários")
     imagem = placeholder.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
     nome = placeholder.text_input("Nome do paciente")
