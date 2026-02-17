@@ -58,7 +58,7 @@ if not st.session_state.get("logado"):
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
             st.session_state["login_rerun"] = True
-            st.success("✅ Login realizado! Reiniciando app...")
+            st.success("✅ Login realizado! Iniciando app...")
             st.stop()  # Para execução segura antes do rerun
         else:
             st.error("Credenciais inválidas")
