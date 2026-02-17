@@ -47,16 +47,18 @@ if not st.session_state.get("logado"):
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("🔐 Login")
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-    if st.button("Entrar"):
-        if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
-            st.session_state["logado"] = True
-            st.session_state["last_active"] = time.time()
-            st.session_state["show_app"] = True
-            st.success("✅ Login realizado! Aguarde enquanto a página carrega...")
-        else:
-            st.error("Credenciais inválidas")
+    with st.form(key="login_form"):
+            usuario = st.text_input("Usuário")
+            senha = st.text_input("Senha", type="password")
+            submit_btn = st.form_submit_button("Entrar")
+        
+        if submit_btn:
+            if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
+                st.session_state["logado"] = True
+                st.session_state["last_active"] = time.time()
+                st.success("✅ Login realizado! Bem-vindo!")
+            else:
+                st.error("Credenciais inválidas")
     st.stop()
 
 # =======================
@@ -161,16 +163,9 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-if st.session_state.get("logado") or st.session_state.get("show_app"):
-    st.session_state["show_app"] = False
-    # Aqui começa o app principal
-    logo = Image.open("logo_Bioapex.png")
-    st.image(logo, use_column_width=True)
-    st.title("Bioapex - Exames Veterinários")
-    logo = Image.open("logo_Bioapex.png")
-    st.image(logo, use_column_width=True)
-    st.title("Bioapex - Exames Veterinários")
-
+logo = Image.open("logo_Bioapex.png")
+st.image(logo, use_column_width=True)
+st.title("Bioapex - Exames Veterinários")
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
 nome = st.text_input("Nome do paciente")
 tutor = st.text_input("Nome do tutor")
