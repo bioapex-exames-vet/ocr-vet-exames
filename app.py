@@ -13,38 +13,60 @@ from google.oauth2.service_account import Credentials
 import datetime
 import re
 
+# =======================
+# CONFIGURAÇÕES
+# =======================
+
 st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 30
+
+# =======================
+# BANNER / LOGO
+# =======================
+try:
+    logo = Image.open("logo_Bioapex.png")
+    st.image(logo, use_column_width=True)
+except:
+    st.write("🔹 Bioapex - Exames Veterinários")
+
+# =======================
+# SESSION EXPIRATION
+# =======================
+if "last_active" not in st.session_state:
+    st.session_state["last_active"] = time.time()
+if "logado" not in st.session_state:
+    st.session_state["logado"] = False
+
+def check_session_timeout():
+    now = time.time()
+    if st.session_state.get("last_active") and (now - st.session_state["last_active"] > INACTIVITY_LIMIT):
+        st.session_state.clear()
+        st.warning("⏰ Sessão expirada. Faça login novamente.")
+        st.experimental_rerun()
+
+check_session_timeout()
+
 # =======================
 # LOGIN
 # =======================
-def check_session_timeout():
-    if "last_active" in st.session_state:
-        now = time.time()
-        elapsed = now - st.session_state["last_active"]
-        if elapsed > INACTIVITY_LIMIT:
-            st.session_state["logado"] = False  # força logout
-            st.warning("Sessão expirada. Por favor, faça login novamente.")
-            st.experimental_rerun()  # recarrega a página
-            
-def login():
+if not st.session_state["logado"]:
     st.title("🔐 Login")
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
     if st.button("Entrar"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
+            st.session_state["last_active"] = time.time()
+            st.experimental_rerun()
         else:
             st.error("Credenciais inválidas")
-
-if "last_active" not in st.session_state:
-    st.session_state["last_active"] = time.time()
-if "logado" not in st.session_state:
-    st.session_state["logado"] = False
-if not st.session_state["logado"]:
-    login()
     st.stop()
-check_session_timeout()
+
+# =======================
+# ATUALIZA TEMPO DE ATIVIDADE
+# =======================
+st.session_state["last_active"] = time.time()
+
 # =======================
 # Configura Google Drive
 # =======================
