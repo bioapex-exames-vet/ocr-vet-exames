@@ -130,7 +130,8 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-st.title("📄 OCR Exames Veterinários")
+# st.image()
+st.title("Bioapex - Exames Veterinários")
 
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
 nome = st.text_input("Nome do paciente")
