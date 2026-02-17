@@ -51,14 +51,13 @@ if not st.session_state.get("logado"):
             usuario = st.text_input("Usuário")
             senha = st.text_input("Senha", type="password")
             submit_btn = st.form_submit_button("Entrar")
-        
-        if submit_btn:
-            if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
-                st.session_state["logado"] = True
-                st.session_state["last_active"] = time.time()
-                st.success("✅ Login realizado! Bem-vindo!")
-            else:
-                st.error("Credenciais inválidas")
+    if submit_btn:
+        if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
+            st.session_state["logado"] = True
+            st.session_state["last_active"] = time.time()
+            st.success("✅ Login realizado! Bem-vindo!")
+        else:
+            st.error("Credenciais inválidas")
     st.stop()
 
 # =======================
