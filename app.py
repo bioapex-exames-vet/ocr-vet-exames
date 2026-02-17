@@ -1,1 +1,155 @@
+import streamlit as st
+from PIL import Image
+import pytesseract
+from docx import Document
+from reportlab.pdfgen import canvas
+import io
+import os
+import smtplib
+from email.message import EmailMessage
+import json
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+import datetime
+import re
+
+st.set_page_config(layout="wide")
+
+# =======================
+# LOGIN
+# =======================
+def login():
+    st.title("🔐 Login")
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
+            st.session_state["logado"] = True
+        else:
+            st.error("Credenciais inválidas")
+
+if "logado" not in st.session_state:
+    st.session_state["logado"] = False
+if not st.session_state["logado"]:
+    login()
+    st.stop()
+
+# =======================
+# Configura Google Drive
+# =======================
+service_account_info = json.loads(st.secrets["GDRIVE_JSON"])
+SCOPES = ['https://www.googleapis.com/auth/drive']
+credentials = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
+
+# =======================
+# Funções principais
+# =======================
+def realizar_ocr(imagem):
+    return pytesseract.image_to_string(imagem, lang='por')
+
+def extrair_dados(texto):
+    cpf = re.findall(r'\d{3}\.\d{3}\.\d{3}-\d{2}', texto)
+    data = re.findall(r'\d{2}/\d{2}/\d{4}', texto)
+    return {
+        "cpf": cpf[0] if cpf else "",
+        "data": data[0] if data else ""
+    }
+
+def preencher_template(nome, numero, texto, dados):
+    # Busca template no Drive
+    results = drive_service.files().list(q=f"'{PARENT_FOLDER_ID}' in parents and name='modelo_padrao.docx'", fields="files(id, name)").execute()
+    items = results.get('files', [])
+    if not items:
+        st.error("Template não encontrado")
+        return None, None
+    template_id = items[0]['id']
+
+    # Baixa o template
+    request = drive_service.files().get_media(fileId=template_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    
+    doc = Document(fh)
+    for p in doc.paragraphs:
+        p.text = p.text.replace("{{NOME}}", nome)
+        p.text = p.text.replace("{{DOCUMENTO}}", numero)
+        p.text = p.text.replace("{{CPF}}", dados["cpf"])
+        p.text = p.text.replace("{{DATA}}", dados["data"])
+        p.text = p.text.replace("{{TEXTO}}", texto)
+
+    nome_arquivo = f"{nome}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+    docx_io = io.BytesIO()
+    doc.save(docx_io)
+    docx_io.seek(0)
+
+    # Salvar no Drive
+    file_metadata = {
+        'name': nome_arquivo,
+        'parents': [PARENT_FOLDER_ID]
+    }
+    media = MediaIoBaseUpload(docx_io, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    
+    return nome_arquivo
+
+def gerar_pdf(texto, nome_base):
+    pdf_io = io.BytesIO()
+    c = canvas.Canvas(pdf_io)
+    y = 800
+    for linha in texto.split("\n"):
+        c.drawString(30, y, linha)
+        y -= 15
+    c.save()
+    pdf_io.seek(0)
+
+    # Salvar no Drive
+    file_metadata = {
+        'name': f"{nome_base}.pdf",
+        'parents': [PARENT_FOLDER_ID]
+    }
+    media = MediaIoBaseUpload(pdf_io, mimetype='application/pdf')
+    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    return f"{nome_base}.pdf"
+
+def enviar_email(destino, anexo):
+    msg = EmailMessage()
+    msg["Subject"] = "Documento Processado"
+    msg["From"] = st.secrets["EMAIL"]
+    msg["To"] = destino
+    msg.set_content("Segue documento em anexo.")
+    with open(anexo, "rb") as f:
+        msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename=anexo)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(st.secrets["EMAIL"], st.secrets["SENHA_EMAIL"])
+        smtp.send_message(msg)
+
+# =======================
+# Interface Streamlit
+# =======================
+st.title("📄 OCR Exames Veterinários")
+
+imagem = st.file_uploader("Envie a imagem do exame", type=["jpg", "png", "jpeg"])
+nome = st.text_input("Nome do paciente")
+numero = st.text_input("Número do exame")
+email_destino = st.text_input("Enviar para email")
+
+if st.button("Processar"):
+    if imagem:
+        img = Image.open(imagem)
+        texto = realizar_ocr(img)
+        dados = extrair_dados(texto)
+
+        nome_docx = preencher_template(nome, numero, texto, dados)
+        gerar_pdf(texto, nome_docx.replace(".docx",""))
+        enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
+
+        st.success("Processamento concluído! DOCX e PDF salvos no Drive, email enviado.")
 
