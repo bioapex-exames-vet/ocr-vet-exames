@@ -161,14 +161,18 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-logo = Image.open("logo_Bioapex.png")
-st.image(logo, use_column_width=True)
-st.title("Bioapex - Exames Veterinários")
-imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
-nome = st.text_input("Nome do paciente")
-tutor = st.text_input("Nome do tutor")
-data = st.date_input("Data do exame")
-email_destino = st.text_input("Enviar para email")
+if st.session_state["logado"]:
+    st.session_state["last_active"] = time.time()
+    # Limpa tela de login simulando nova página
+    st.empty()  # Remove widgets anteriores
+    logo = Image.open("logo_Bioapex.png")
+    st.image(logo, use_column_width=True)
+    st.title("Bioapex - Exames Veterinários")
+    imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
+    nome = st.text_input("Nome do paciente")
+    tutor = st.text_input("Nome do tutor")
+    data = st.date_input("Data do exame")
+    email_destino = st.text_input("Enviar para email")
 
 if st.button("Processar"):
     if imagem:
