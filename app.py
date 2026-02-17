@@ -55,7 +55,8 @@ if not st.session_state.get("logado"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
-            st.success("✅ Login realizado! Bem-vindo!")
+            st.rerun()
+            # st.success("✅ Login realizado! Bem-vindo!")
         else:
             st.error("Credenciais inválidas")
 
