@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 import easyocr
 from PIL import Image
 from docx import Document
@@ -130,7 +131,10 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-# st.image()
+st.set_page_config(layout="wide")
+
+logo = Image.open("logo_Bioapex.png")
+st.image(logo, width=200)
 st.title("Bioapex - Exames Veterinários")
 
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
