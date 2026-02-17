@@ -134,7 +134,8 @@ st.title("📄 OCR Exames Veterinários")
 
 imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
 nome = st.text_input("Nome do paciente")
-numero = st.text_input("Número do exame")
+tutor = st.text_input("Nome do tutor")
+data = st.date_input("Data do exame")
 email_destino = st.text_input("Enviar para email")
 
 if st.button("Processar"):
@@ -143,5 +144,5 @@ if st.button("Processar"):
         dados = extrair_dados(texto)
         nome_docx = preencher_template(nome, numero, texto, dados)
         gerar_pdf(texto, nome_docx.replace(".docx",""))
-        # enviar_email(email_destino, nome_docx.replace(".docx",".pdf")) # opcional
+        enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
         st.success("Processamento concluído! DOCX e PDF salvos no Drive.")
