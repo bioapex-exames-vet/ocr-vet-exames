@@ -48,7 +48,6 @@ if not st.session_state.get("logado"):
         st.image(logo, use_column_width=True)
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
-    
     st.title("🔐 Login")
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
@@ -56,30 +55,16 @@ if not st.session_state.get("logado"):
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
             st.session_state["last_active"] = time.time()
-            st.session_state["login_rerun"] = True
-            st.success("✅ Login realizado! Iniciando app...")
+            st.success("✅ Login realizado! Por favor, recarregue a página...")
             st.stop()  # Para execução segura antes do rerun
         else:
             st.error("Credenciais inválidas")
     st.stop()
 
-if st.session_state.get("login_rerun"):
-    st.session_state["login_rerun"] = False
-    st.experimental_rerun()
-
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
 # =======================
 st.session_state["last_active"] = time.time()
-
-# =======================
-# BANNER/LOGO
-# =======================
-try:
-    logo = Image.open("logo.png")
-    st.image(logo, use_column_width=True)
-except:
-    st.write("🔹 OCR Exames Veterinários")
 
 # =======================
 # Configura Google Drive
