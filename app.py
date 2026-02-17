@@ -18,7 +18,7 @@ import re
 # =======================
 
 st.set_page_config(layout="wide")
-INACTIVITY_LIMIT = 30
+INACTIVITY_LIMIT = 600
 
 # =======================
 # SESSION STATE
