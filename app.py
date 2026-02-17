@@ -58,7 +58,6 @@ if not st.session_state.get("logado"):
             st.success("✅ Login realizado! Bem-vindo!")
         else:
             st.error("Credenciais inválidas")
-    st.stop()
 
 # =======================
 # ATUALIZA TEMPO DE ATIVIDADE
