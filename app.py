@@ -163,6 +163,12 @@ def enviar_email(destino, anexo):
 # Interface
 # =======================
 if st.session_state["logado"]:
+    col1, col2 = st.columns([8,1])
+    with col2:
+        if st.button("🚪 Sair"):
+            st.session_state.clear()
+            st.rerun()
+    st.title("Bioapex - Exames Veterinários")
     st.session_state["last_active"] = time.time()
     logo = Image.open("logo_Bioapex.png")
     st.image(logo, use_column_width=True)
