@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
+import time
 import easyocr
-from PIL import Image
 from docx import Document
 from reportlab.pdfgen import canvas
 import io
@@ -14,10 +14,19 @@ import datetime
 import re
 
 st.set_page_config(layout="wide")
-
+INACTIVITY_LIMIT = 30
 # =======================
 # LOGIN
 # =======================
+def check_session_timeout():
+    if "last_active" in st.session_state:
+        now = time.time()
+        elapsed = now - st.session_state["last_active"]
+        if elapsed > INACTIVITY_LIMIT:
+            st.session_state["logado"] = False  # força logout
+            st.warning("Sessão expirada. Por favor, faça login novamente.")
+            st.experimental_rerun()  # recarrega a página
+            
 def login():
     st.title("🔐 Login")
     usuario = st.text_input("Usuário")
@@ -28,12 +37,14 @@ def login():
         else:
             st.error("Credenciais inválidas")
 
+if "last_active" not in st.session_state:
+    st.session_state["last_active"] = time.time()
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
 if not st.session_state["logado"]:
     login()
     st.stop()
-
+check_session_timeout()
 # =======================
 # Configura Google Drive
 # =======================
@@ -131,7 +142,6 @@ def enviar_email(destino, anexo):
 # =======================
 # Interface
 # =======================
-st.set_page_config(layout="wide")
 
 logo = Image.open("logo_Bioapex.png")
 st.image(logo, use_column_width=True)
