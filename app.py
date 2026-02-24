@@ -17,7 +17,6 @@ import cv2
 # =======================
 # CONFIGURAÇÕES GERAIS
 # =======================
-
 st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 600
 
@@ -95,6 +94,7 @@ def realizar_ocr(image_bytes):
 
 def extrair_dados(texto, marcadores_hemograma):
     dados = {}
+    # Informações do paciente
     match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Proprietario"] = match.group(1).strip() if match else None
 
@@ -110,11 +110,13 @@ def extrair_dados(texto, marcadores_hemograma):
     match = re.search(r'Hora:\s*([\d\-\.: ]+)', texto, flags=re.IGNORECASE)
     dados["Hora"] = match.group(1).strip() if match else None
 
+    # Normalização de marcadores compostos
     texto = re.sub(r'RDW[\s\r\n]+CV', 'RDW_CV', texto, flags=re.IGNORECASE)
     texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCC', 'P_LCC', texto, flags=re.IGNORECASE)
 
+    # Extração do hemograma
     tokens = re.split(r'\s+|[\r\n]+', texto)
     hemograma = {}
     i = 0
@@ -226,16 +228,20 @@ if st.session_state["logado"]:
 
     if imagem is not None:
         try:
-            file_bytes = imagem.getvalue()
+            # 🔒 Leitura segura de bytes
+            file_bytes = imagem.read()
             if not file_bytes:
                 st.error("Arquivo inválido ou vazio.")
                 st.stop()
+
             np_array = np.frombuffer(file_bytes, np.uint8)
             img_cv = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
             if img_cv is None:
                 st.error("Arquivo inválido ou corrompido.")
                 st.stop()
+
             st.session_state["image_bytes"] = file_bytes
+
         except Exception as e:
             st.error(f"Arquivo inválido ou corrompido: {e}")
             st.stop()
