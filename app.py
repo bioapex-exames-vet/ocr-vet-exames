@@ -12,6 +12,7 @@ from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 import datetime
 import re
+import numpy as np
 
 # =======================
 # CONFIGURAÇÕES GERAIS
@@ -85,8 +86,9 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 reader = easyocr.Reader(['pt'])
 
 def realizar_ocr(imagem):
-    img = Image.open(imagem).convert('RGB')
-    result = reader.readtext(img)
+    img = Image.open(imagem).convert("RGB")
+    img_np = np.array(img)  # converte para numpy array
+    result = reader.readtext(img_np)
     texto = "\n".join([t[1] for t in result])
     return texto
 
