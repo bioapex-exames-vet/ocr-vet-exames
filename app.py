@@ -97,7 +97,6 @@ def realizar_ocr(image_bytes):
 
 def extrair_dados(texto, marcadores_hemograma):
     dados = {}
-    # Informações do paciente
     match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Proprietario"] = match.group(1).strip() if match else None
 
@@ -113,13 +112,11 @@ def extrair_dados(texto, marcadores_hemograma):
     match = re.search(r'Hora:\s*([\d\-\.: ]+)', texto, flags=re.IGNORECASE)
     dados["Hora"] = match.group(1).strip() if match else None
 
-    # Normalização de marcadores compostos
     texto = re.sub(r'RDW[\s\r\n]+CV', 'RDW_CV', texto, flags=re.IGNORECASE)
     texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCC', 'P_LCC', texto, flags=re.IGNORECASE)
 
-    # Extração do hemograma
     tokens = re.split(r'\s+|[\r\n]+', texto)
     hemograma = {}
     i = 0
@@ -224,9 +221,6 @@ if st.session_state["logado"]:
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("Bioapex - Exames Veterinários")
 
-    # -------------------------
-    # Inputs
-    # -------------------------
     imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
     nome = st.text_input("Nome do paciente")
     tutor = st.text_input("Nome do tutor")
@@ -234,14 +228,21 @@ if st.session_state["logado"]:
     email_destino = st.text_input("Enviar para email")
 
     # ==========================
-    # SALVA IMAGEM UMA ÚNICA VEZ (corrigido)
+    # VALIDAÇÃO SEGURA DE IMAGEM
     # ==========================
     if imagem is not None:
-        image_bytes = imagem.read()  # ✅ uso seguro de read()
-        if len(image_bytes) == 0:
-            st.error("Arquivo inválido ou vazio.")
+        try:
+            img_pil = Image.open(imagem)
+            img_pil.verify()  # verifica integridade
+            imagem.seek(0)
+            image_bytes = imagem.read()
+            if len(image_bytes) == 0:
+                st.error("Arquivo inválido ou vazio.")
+                st.stop()
+            st.session_state["image_bytes"] = image_bytes
+        except Exception as e:
+            st.error(f"Arquivo inválido ou corrompido: {e}")
             st.stop()
-        st.session_state["image_bytes"] = image_bytes
 
     # ==========================
     # PROCESSA SE JÁ EXISTE IMAGEM
@@ -255,7 +256,6 @@ if st.session_state["logado"]:
             st.stop()
 
         st.subheader("📋 Conferência e edição do Hemograma")
-
         hemograma_editado = {}
         cols = st.columns(3)
         for i, marcador in enumerate(marcadores_hemograma):
@@ -271,9 +271,7 @@ if st.session_state["logado"]:
         if st.button("Processar e Gerar Documento"):
             dados["hemograma"] = hemograma_editado
             numero = dados.get("ID_amostra", "")
-
             nome_docx = preencher_template(nome, numero, texto, dados, data_exame)
-
             if nome_docx:
                 gerar_pdf(texto, nome_docx.replace(".docx",""))
                 enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
