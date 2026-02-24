@@ -13,6 +13,7 @@ from google.oauth2.service_account import Credentials
 import datetime
 import re
 import numpy as np
+import cv2
 
 # =======================
 # CONFIGURAÇÕES GERAIS
@@ -85,11 +86,12 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 # =======================
 reader = easyocr.Reader(['pt'])
 
-def realizar_ocr(imagem):
-    img = Image.open(imagem)
-    img = img.convert("RGB")
-    img_np = np.array(img)
-    result = reader.readtext(img_np)
+def realizar_ocr(image_bytes):
+    file_bytes = np.asarray(bytearray(image_bytes), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Imagem inválida ou corrompida.")
+    result = reader.readtext(img)
     texto = "\n".join([t[1] for t in result])
     return texto
 
@@ -241,30 +243,37 @@ if st.session_state["logado"]:
     tutor = st.text_input("Nome do tutor")
     data = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
-
-    if imagem:
-        if imagem is not None:
-            try:
-                imagem.seek(0)
-                texto = realizar_ocr(imagem)
-            except Exception as e:
-                st.error(f"Erro ao abrir imagem: {e}")
-                st.stop()
-        texto = realizar_ocr(imagem)
-        dados = extrair_dados(texto, marcadores_hemograma)
+    if imagem is not None:
+        # 🔒 Congela os bytes para evitar erro de ponteiro
+        image_bytes = imagem.getvalue()
+        st.session_state["image_bytes"] = image_bytes
+        if len(image_bytes) == 0:
+            st.error("Arquivo inválido ou vazio.")
+            st.stop()
+        try:
+            texto = realizar_ocr(image_bytes)
+            dados = extrair_dados(texto, marcadores_hemograma)
+        except Exception as e:
+            st.error(f"Erro ao processar imagem: {e}")
+            st.stop()
         st.subheader("📋 Conferência e edição do Hemograma")
         hemograma_editado = {}
-        cols = st.columns(3)  # organiza em 3 colunas
+        cols = st.columns(3)
         for i, marcador in enumerate(marcadores_hemograma):
             valor_ocr = dados["hemograma"].get(marcador)
             with cols[i % 3]:
-                hemograma_editado[marcador] = st.text_input(
+                hemograma_editado[marcador] = st.number_input(
                     marcador,
-                    value=str(valor_ocr) if valor_ocr is not None else ""
+                    value=float(valor_ocr) if valor_ocr is not None else 0.0,
+                    step=0.01,
+                    key=marcador
                 )
         if st.button("Processar e Gerar Documento"):
             dados["hemograma"] = hemograma_editado
+            # Caso numero não exista
+            numero = dados.get("ID_amostra", "")
             nome_docx = preencher_template(nome, numero, texto, dados)
-            gerar_pdf(texto, nome_docx.replace(".docx",""))
-            enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
-            st.success("Processamento concluído! DOCX e PDF salvos no Drive.")
+            if nome_docx:
+                gerar_pdf(texto, nome_docx.replace(".docx",""))
+                enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
+                st.success("Processamento concluído! DOCX e PDF salvos no Drive.")
