@@ -86,8 +86,9 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 reader = easyocr.Reader(['pt'])
 
 def realizar_ocr(imagem):
-    img = Image.open(imagem).convert("RGB")
-    img_np = np.array(img)  # converte para numpy array
+    bytes_data = imagem.read()
+    img = Image.open(io.BytesIO(bytes_data)).convert("RGB")
+    img_np = np.array(img)
     result = reader.readtext(img_np)
     texto = "\n".join([t[1] for t in result])
     return texto
