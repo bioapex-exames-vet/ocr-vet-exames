@@ -56,9 +56,9 @@ if not st.session_state.get("logado"):
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("🔐 Login")
     with st.form(key="login_form"):
-            usuario = st.text_input("Usuário")
-            senha = st.text_input("Senha", type="password")
-            submit_btn = st.form_submit_button("Entrar")
+        usuario = st.text_input("Usuário")
+        senha = st.text_input("Senha", type="password")
+        submit_btn = st.form_submit_button("Entrar")
     if submit_btn:
         if usuario == st.secrets["USUARIO1"] and senha == st.secrets["SENHA1"]:
             st.session_state["logado"] = True
@@ -96,37 +96,25 @@ def realizar_ocr(image_bytes):
     return texto
 
 def extrair_dados(texto, marcadores_hemograma):
-    """
-    Extrai informações do paciente e hemograma do OCR.
-    Retorna dicionário:
-    {
-        "Proprietario": ...,
-        "Paciente": ...,
-        "ID_amostra": ...,
-        "Especie": ...,
-        "Hora": ...,
-        "hemograma": {marcador: valor, ...}
-    }
-    """
     dados = {}
     # -------------------------
     # Extração de informações do paciente
     # -------------------------
-    # Proprietário
     match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Proprietario"] = match.group(1).strip() if match else None
-    # Nome do paciente
+
     match = re.search(r'(?:Nome\s*de\s*paciente|de paciente):\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Paciente"] = match.group(1).strip() if match else None
-    # ID da amostra
+
     match = re.search(r'ID da anostra:\s*(\d+)', texto, flags=re.IGNORECASE)
     dados["ID_amostra"] = match.group(1).strip() if match else None
-    # Espécie
+
     match = re.search(r'Esp[ée]cie:\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Especie"] = match.group(1).strip() if match else None
-    # Hora
+
     match = re.search(r'Hora:\s*([\d\-\.: ]+)', texto, flags=re.IGNORECASE)
     dados["Hora"] = match.group(1).strip() if match else None
+
     # -------------------------
     # Normalização de marcadores compostos
     # -------------------------
@@ -134,6 +122,7 @@ def extrair_dados(texto, marcadores_hemograma):
     texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCC', 'P_LCC', texto, flags=re.IGNORECASE)
+
     # -------------------------
     # Extração do hemograma
     # -------------------------
@@ -148,9 +137,7 @@ def extrair_dados(texto, marcadores_hemograma):
             j = i + 1
             while j < len(tokens):
                 t = tokens[j].strip()
-                # Remove prefixos L / None
                 t = re.sub(r'^(L\s*|None\s*)', '', t)
-                # Extrai primeiro número válido do token
                 match = re.search(r'\d+[.,]?\d*', t)
                 if match:
                     valor = float(match.group(0).replace(',', '.'))
@@ -169,8 +156,7 @@ def salvar_no_drive(file_bytes, nome_arquivo, mime_type):
     media_upload = MediaIoBaseUpload(media, mimetype=mime_type)
     drive_service.files().create(body=file_metadata, media_body=media_upload, fields='id').execute()
 
-def preencher_template(nome, numero, texto, dados):
-    # Baixa template do Drive
+def preencher_template(nome, numero, texto, dados, data_exame):
     results = drive_service.files().list(q=f"'{PARENT_FOLDER_ID}' in parents and name='modelo_padrao.docx'",
                                          fields="files(id, name)").execute()
     items = results.get('files', [])
@@ -190,8 +176,7 @@ def preencher_template(nome, numero, texto, dados):
     for p in doc.paragraphs:
         p.text = p.text.replace("{{NOME}}", nome)
         p.text = p.text.replace("{{DOCUMENTO}}", numero)
-        p.text = p.text.replace("{{CPF}}", dados["cpf"])
-        p.text = p.text.replace("{{DATA}}", dados["data"])
+        p.text = p.text.replace("{{DATA}}", str(data_exame))
         p.text = p.text.replace("{{TEXTO}}", texto)
     nome_arquivo = f"{nome}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
     doc_bytes = io.BytesIO()
@@ -234,29 +219,49 @@ if st.session_state["logado"]:
         if st.button("🚪 Sair"):
             st.session_state.clear()
             st.rerun()
+
     st.session_state["last_active"] = time.time()
-    logo = Image.open("logo_Bioapex.png")
-    st.image(logo, use_column_width=True)
+    try:
+        logo = Image.open("logo_Bioapex.png")
+        st.image(logo, use_column_width=True)
+    except:
+        st.write("🔹 Bioapex - Exames Veterinários")
     st.title("Bioapex - Exames Veterinários")
+
+    # -------------------------
+    # Inputs
+    # -------------------------
     imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
     nome = st.text_input("Nome do paciente")
     tutor = st.text_input("Nome do tutor")
-    data = st.date_input("Data do exame")
+    data_exame = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
-    if imagem is not None:
-        # 🔒 Congela os bytes para evitar erro de ponteiro
-        image_bytes = imagem.getvalue()
-        st.session_state["image_bytes"] = image_bytes
+
+    # -------------------------
+    # Salva upload apenas uma vez
+    # -------------------------
+    if imagem is not None and "image_bytes" not in st.session_state:
+        st.session_state["image_bytes"] = imagem.getvalue()
+
+    # -------------------------
+    # Processamento
+    # -------------------------
+    if "image_bytes" in st.session_state:
+        image_bytes = st.session_state["image_bytes"]
+
         if len(image_bytes) == 0:
             st.error("Arquivo inválido ou vazio.")
             st.stop()
+
         try:
             texto = realizar_ocr(image_bytes)
             dados = extrair_dados(texto, marcadores_hemograma)
         except Exception as e:
             st.error(f"Erro ao processar imagem: {e}")
             st.stop()
+
         st.subheader("📋 Conferência e edição do Hemograma")
+
         hemograma_editado = {}
         cols = st.columns(3)
         for i, marcador in enumerate(marcadores_hemograma):
@@ -266,13 +271,15 @@ if st.session_state["logado"]:
                     marcador,
                     value=float(valor_ocr) if valor_ocr is not None else 0.0,
                     step=0.01,
-                    key=marcador
+                    key=f"input_{marcador}"
                 )
+
         if st.button("Processar e Gerar Documento"):
             dados["hemograma"] = hemograma_editado
-            # Caso numero não exista
             numero = dados.get("ID_amostra", "")
-            nome_docx = preencher_template(nome, numero, texto, dados)
+
+            nome_docx = preencher_template(nome, numero, texto, dados, data_exame)
+
             if nome_docx:
                 gerar_pdf(texto, nome_docx.replace(".docx",""))
                 enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
