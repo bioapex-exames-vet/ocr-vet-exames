@@ -97,9 +97,7 @@ def realizar_ocr(image_bytes):
 
 def extrair_dados(texto, marcadores_hemograma):
     dados = {}
-    # -------------------------
-    # Extração de informações do paciente
-    # -------------------------
+    # Informações do paciente
     match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, flags=re.IGNORECASE)
     dados["Proprietario"] = match.group(1).strip() if match else None
 
@@ -115,17 +113,13 @@ def extrair_dados(texto, marcadores_hemograma):
     match = re.search(r'Hora:\s*([\d\-\.: ]+)', texto, flags=re.IGNORECASE)
     dados["Hora"] = match.group(1).strip() if match else None
 
-    # -------------------------
     # Normalização de marcadores compostos
-    # -------------------------
     texto = re.sub(r'RDW[\s\r\n]+CV', 'RDW_CV', texto, flags=re.IGNORECASE)
     texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.IGNORECASE)
     texto = re.sub(r'P[\s\r\n]+LCC', 'P_LCC', texto, flags=re.IGNORECASE)
 
-    # -------------------------
     # Extração do hemograma
-    # -------------------------
     tokens = re.split(r'\s+|[\r\n]+', texto)
     hemograma = {}
     i = 0
@@ -157,8 +151,10 @@ def salvar_no_drive(file_bytes, nome_arquivo, mime_type):
     drive_service.files().create(body=file_metadata, media_body=media_upload, fields='id').execute()
 
 def preencher_template(nome, numero, texto, dados, data_exame):
-    results = drive_service.files().list(q=f"'{PARENT_FOLDER_ID}' in parents and name='modelo_padrao.docx'",
-                                         fields="files(id, name)").execute()
+    results = drive_service.files().list(
+        q=f"'{PARENT_FOLDER_ID}' in parents and name='modelo_padrao.docx'",
+        fields="files(id, name)"
+    ).execute()
     items = results.get('files', [])
     if not items:
         st.error("Template não encontrado")
@@ -237,24 +233,22 @@ if st.session_state["logado"]:
     data_exame = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
 
-    # -------------------------
-    # Salva upload apenas uma vez
-    # -------------------------
-    if imagem is not None and "image_bytes" not in st.session_state:
-        st.session_state["image_bytes"] = imagem.getvalue()
-
-    # -------------------------
-    # Processamento
-    # -------------------------
-    if "image_bytes" in st.session_state:
-        image_bytes = st.session_state["image_bytes"]
-
+    # ==========================
+    # SALVA IMAGEM UMA ÚNICA VEZ (corrigido)
+    # ==========================
+    if imagem is not None:
+        image_bytes = imagem.read()  # ✅ uso seguro de read()
         if len(image_bytes) == 0:
             st.error("Arquivo inválido ou vazio.")
             st.stop()
+        st.session_state["image_bytes"] = image_bytes
 
+    # ==========================
+    # PROCESSA SE JÁ EXISTE IMAGEM
+    # ==========================
+    if "image_bytes" in st.session_state:
         try:
-            texto = realizar_ocr(image_bytes)
+            texto = realizar_ocr(st.session_state["image_bytes"])
             dados = extrair_dados(texto, marcadores_hemograma)
         except Exception as e:
             st.error(f"Erro ao processar imagem: {e}")
