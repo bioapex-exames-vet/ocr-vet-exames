@@ -20,6 +20,12 @@ import re
 st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 600
 
+marcadores_hemograma = [
+    "WBC", "LYM%", "MON%", "GRA%", "LYM#", "MON#", "GRA#",
+    "RBC", "HGB", "HCT", "MCV", "MCH", "MCHC",
+    "RDW_CV", "RDW_SD", "PLT", "PCT", "MPV", "PDW", "P_LCR", "P_LCC"
+]
+
 # =======================
 # SESSION STATE
 # =======================
@@ -84,13 +90,72 @@ def realizar_ocr(imagem):
     texto = "\n".join([t[1] for t in result])
     return texto
 
-def extrair_dados(texto):
-    cpf = re.findall(r'\d{3}\.\d{3}\.\d{3}-\d{2}', texto)
-    data = re.findall(r'\d{2}/\d{2}/\d{4}', texto)
-    return {
-        "cpf": cpf[0] if cpf else "",
-        "data": data[0] if data else ""
+def extrair_dados(texto, marcadores_hemograma):
+    """
+    Extrai informações do paciente e hemograma do OCR.
+    Retorna dicionário:
+    {
+        "Proprietario": ...,
+        "Paciente": ...,
+        "ID_amostra": ...,
+        "Especie": ...,
+        "Hora": ...,
+        "hemograma": {marcador: valor, ...}
     }
+    """
+    dados = {}
+    # -------------------------
+    # Extração de informações do paciente
+    # -------------------------
+    # Proprietário
+    match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, flags=re.IGNORECASE)
+    dados["Proprietario"] = match.group(1).strip() if match else None
+    # Nome do paciente
+    match = re.search(r'(?:Nome\s*de\s*paciente|de paciente):\s*(.+)', texto, flags=re.IGNORECASE)
+    dados["Paciente"] = match.group(1).strip() if match else None
+    # ID da amostra
+    match = re.search(r'ID da anostra:\s*(\d+)', texto, flags=re.IGNORECASE)
+    dados["ID_amostra"] = match.group(1).strip() if match else None
+    # Espécie
+    match = re.search(r'Esp[ée]cie:\s*(.+)', texto, flags=re.IGNORECASE)
+    dados["Especie"] = match.group(1).strip() if match else None
+    # Hora
+    match = re.search(r'Hora:\s*([\d\-\.: ]+)', texto, flags=re.IGNORECASE)
+    dados["Hora"] = match.group(1).strip() if match else None
+    # -------------------------
+    # Normalização de marcadores compostos
+    # -------------------------
+    texto = re.sub(r'RDW[\s\r\n]+CV', 'RDW_CV', texto, flags=re.IGNORECASE)
+    texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.IGNORECASE)
+    texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.IGNORECASE)
+    texto = re.sub(r'P[\s\r\n]+LCC', 'P_LCC', texto, flags=re.IGNORECASE)
+    # -------------------------
+    # Extração do hemograma
+    # -------------------------
+    tokens = re.split(r'\s+|[\r\n]+', texto)
+    hemograma = {}
+    i = 0
+    while i < len(tokens):
+        token = tokens[i].strip().upper()
+        if token in marcadores_hemograma:
+            marcador = token
+            valor = None
+            j = i + 1
+            while j < len(tokens):
+                t = tokens[j].strip()
+                # Remove prefixos L / None
+                t = re.sub(r'^(L\s*|None\s*)', '', t)
+                # Extrai primeiro número válido do token
+                match = re.search(r'\d+[.,]?\d*', t)
+                if match:
+                    valor = float(match.group(0).replace(',', '.'))
+                    break
+                j += 1
+            if valor is not None:
+                hemograma[marcador] = valor
+        i += 1
+    dados["hemograma"] = hemograma
+    return dados
 
 def salvar_no_drive(file_bytes, nome_arquivo, mime_type):
     file_metadata = {'name': nome_arquivo, 'parents': [PARENT_FOLDER_ID]}
@@ -108,7 +173,6 @@ def preencher_template(nome, numero, texto, dados):
         st.error("Template não encontrado")
         return None
     template_id = items[0]['id']
-
     from googleapiclient.http import MediaIoBaseDownload
     fh = io.BytesIO()
     request = drive_service.files().get_media(fileId=template_id)
@@ -117,7 +181,6 @@ def preencher_template(nome, numero, texto, dados):
     while not done:
         status, done = downloader.next_chunk()
     fh.seek(0)
-
     doc = Document(fh)
     for p in doc.paragraphs:
         p.text = p.text.replace("{{NOME}}", nome)
@@ -125,7 +188,6 @@ def preencher_template(nome, numero, texto, dados):
         p.text = p.text.replace("{{CPF}}", dados["cpf"])
         p.text = p.text.replace("{{DATA}}", dados["data"])
         p.text = p.text.replace("{{TEXTO}}", texto)
-
     nome_arquivo = f"{nome}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
     doc_bytes = io.BytesIO()
     doc.save(doc_bytes)
@@ -177,10 +239,21 @@ if st.session_state["logado"]:
     data = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
 
-    if st.button("Processar"):
-        if imagem:
-            texto = realizar_ocr(imagem)
-            dados = extrair_dados(texto)
+    if imagem:
+        texto = realizar_ocr(imagem)
+        dados = extrair_dados(texto, marcadores_hemograma)
+        st.subheader("📋 Conferência e edição do Hemograma")
+        hemograma_editado = {}
+        cols = st.columns(3)  # organiza em 3 colunas
+        for i, marcador in enumerate(marcadores_hemograma):
+            valor_ocr = dados["hemograma"].get(marcador)
+            with cols[i % 3]:
+                hemograma_editado[marcador] = st.text_input(
+                    marcador,
+                    value=str(valor_ocr) if valor_ocr is not None else ""
+                )
+        if st.button("Processar e Gerar Documento"):
+            dados["hemograma"] = hemograma_editado
             nome_docx = preencher_template(nome, numero, texto, dados)
             gerar_pdf(texto, nome_docx.replace(".docx",""))
             enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
