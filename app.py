@@ -86,8 +86,8 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 reader = easyocr.Reader(['pt'])
 
 def realizar_ocr(imagem):
-    bytes_data = imagem.getvalue()
-    img = Image.open(io.BytesIO(bytes_data)).convert("RGB")
+    img = Image.open(imagem)
+    img = img.convert("RGB")
     img_np = np.array(img)
     result = reader.readtext(img_np)
     texto = "\n".join([t[1] for t in result])
@@ -243,6 +243,13 @@ if st.session_state["logado"]:
     email_destino = st.text_input("Enviar para email")
 
     if imagem:
+        if imagem is not None:
+            try:
+                imagem.seek(0)
+                texto = realizar_ocr(imagem)
+            except Exception as e:
+                st.error(f"Erro ao abrir imagem: {e}")
+                st.stop()
         texto = realizar_ocr(imagem)
         dados = extrair_dados(texto, marcadores_hemograma)
         st.subheader("📋 Conferência e edição do Hemograma")
