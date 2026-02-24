@@ -1,5 +1,4 @@
 import streamlit as st
-from PIL import Image
 import time
 import easyocr
 from docx import Document
@@ -50,8 +49,8 @@ if st.session_state.get("last_active") and (now - st.session_state["last_active"
 # =======================
 if not st.session_state.get("logado"):
     try:
-        logo = Image.open("logo_Bioapex.png")
-        st.image(logo, use_column_width=True)
+        logo = cv2.imread("logo_Bioapex.png")
+        st.image("logo_Bioapex.png", use_column_width=True)
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("🔐 Login")
@@ -204,7 +203,7 @@ def enviar_email(destino, anexo):
         smtp.send_message(msg)
 
 # =======================
-# Interface
+# INTERFACE
 # =======================
 if st.session_state["logado"]:
     col1, col2 = st.columns([8,1])
@@ -215,8 +214,7 @@ if st.session_state["logado"]:
 
     st.session_state["last_active"] = time.time()
     try:
-        logo = Image.open("logo_Bioapex.png")
-        st.image(logo, use_column_width=True)
+        st.image("logo_Bioapex.png", use_column_width=True)
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("Bioapex - Exames Veterinários")
@@ -228,18 +226,16 @@ if st.session_state["logado"]:
     email_destino = st.text_input("Enviar para email")
 
     # ==========================
-    # VALIDAÇÃO SEGURA DE IMAGEM
+    # VALIDAÇÃO SEGURA COM OPENCV
     # ==========================
     if imagem is not None:
         try:
-            img_pil = Image.open(imagem)
-            img_pil.verify()  # verifica integridade
-            imagem.seek(0)
-            image_bytes = imagem.read()
-            if len(image_bytes) == 0:
-                st.error("Arquivo inválido ou vazio.")
+            file_bytes = np.asarray(bytearray(imagem.read()), dtype=np.uint8)
+            img_cv = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            if img_cv is None:
+                st.error("Arquivo inválido ou corrompido.")
                 st.stop()
-            st.session_state["image_bytes"] = image_bytes
+            st.session_state["image_bytes"] = file_bytes
         except Exception as e:
             st.error(f"Arquivo inválido ou corrompido: {e}")
             st.stop()
