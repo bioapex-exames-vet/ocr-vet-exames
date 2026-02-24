@@ -49,7 +49,6 @@ if st.session_state.get("last_active") and (now - st.session_state["last_active"
 # =======================
 if not st.session_state.get("logado"):
     try:
-        logo = cv2.imread("logo_Bioapex.png")
         st.image("logo_Bioapex.png", use_column_width=True)
     except:
         st.write("🔹 Bioapex - Exames Veterinários")
@@ -86,8 +85,8 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 reader = easyocr.Reader(['pt'])
 
 def realizar_ocr(image_bytes):
-    file_bytes = np.asarray(bytearray(image_bytes), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    np_array = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
     if img is None:
         raise ValueError("Imagem inválida ou corrompida.")
     result = reader.readtext(img)
@@ -225,13 +224,14 @@ if st.session_state["logado"]:
     data_exame = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
 
-    # ==========================
-    # VALIDAÇÃO SEGURA COM OPENCV
-    # ==========================
     if imagem is not None:
         try:
-            file_bytes = np.asarray(bytearray(imagem.read()), dtype=np.uint8)
-            img_cv = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            file_bytes = imagem.getvalue()
+            if not file_bytes:
+                st.error("Arquivo inválido ou vazio.")
+                st.stop()
+            np_array = np.frombuffer(file_bytes, np.uint8)
+            img_cv = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
             if img_cv is None:
                 st.error("Arquivo inválido ou corrompido.")
                 st.stop()
@@ -240,9 +240,6 @@ if st.session_state["logado"]:
             st.error(f"Arquivo inválido ou corrompido: {e}")
             st.stop()
 
-    # ==========================
-    # PROCESSA SE JÁ EXISTE IMAGEM
-    # ==========================
     if "image_bytes" in st.session_state:
         try:
             texto = realizar_ocr(st.session_state["image_bytes"])
