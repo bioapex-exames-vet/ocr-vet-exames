@@ -83,14 +83,14 @@ PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 # =======================
 reader = easyocr.Reader(['pt'])
 
-def realizar_ocr(image_bytes):
-    np_array = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Imagem inválida ou corrompida.")
-    result = reader.readtext(img)
-    texto = "\n".join([t[1] for t in result])
-    return texto
+# def realizar_ocr(image_bytes):
+#     np_array = np.frombuffer(image_bytes, np.uint8)
+#     img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+#     if img is None:
+#         raise ValueError("Imagem inválida ou corrompida.")
+#     result = reader.readtext(img)
+#     texto = "\n".join([t[1] for t in result])
+#     return texto
 
 def extrair_dados(texto, marcadores_hemograma):
     dados = {}
@@ -220,38 +220,40 @@ if st.session_state["logado"]:
         st.write("🔹 Bioapex - Exames Veterinários")
     st.title("Bioapex - Exames Veterinários")
 
-    imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
-    nome = st.text_input("Nome do paciente")
-    tutor = st.text_input("Nome do tutor")
-    data_exame = st.date_input("Data do exame")
+    # imagem = st.file_uploader("Envie a imagem do exame", type=["jpg","png","jpeg"])
+    texto = st.text_input("Texto reconhecido por imagem")
+    # nome = st.text_input("Nome do paciente")
+    # tutor = st.text_input("Nome do tutor")
+    # data_exame = st.date_input("Data do exame")
     email_destino = st.text_input("Enviar para email")
 
-    if imagem is not None:
+    # if imagem is not None:
+    #     try:
+    #         # 🔒 Leitura segura de bytes
+    #         file_bytes = imagem.read()
+    #         if not file_bytes:
+    #             st.error("Arquivo inválido ou vazio.")
+    #             st.stop()
+
+    #         np_array = np.frombuffer(file_bytes, np.uint8)
+    #         img_cv = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+    #         if img_cv is None:
+    #             st.error("Arquivo inválido ou corrompido.")
+    #             st.stop()
+
+    #         st.session_state["image_bytes"] = file_bytes
+
+    #     except Exception as e:
+    #         st.error(f"Arquivo inválido ou corrompido: {e}")
+    #         st.stop()
+
+    # if "image_bytes" in st.session_state:
+    if texto is not None:
         try:
-            # 🔒 Leitura segura de bytes
-            file_bytes = imagem.read()
-            if not file_bytes:
-                st.error("Arquivo inválido ou vazio.")
-                st.stop()
-
-            np_array = np.frombuffer(file_bytes, np.uint8)
-            img_cv = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
-            if img_cv is None:
-                st.error("Arquivo inválido ou corrompido.")
-                st.stop()
-
-            st.session_state["image_bytes"] = file_bytes
-
-        except Exception as e:
-            st.error(f"Arquivo inválido ou corrompido: {e}")
-            st.stop()
-
-    if "image_bytes" in st.session_state:
-        try:
-            texto = realizar_ocr(st.session_state["image_bytes"])
+            # texto = realizar_ocr(st.session_state["image_bytes"])
             dados = extrair_dados(texto, marcadores_hemograma)
         except Exception as e:
-            st.error(f"Erro ao processar imagem: {e}")
+            st.error(f"Erro ao processar texto: {e}")
             st.stop()
 
         st.subheader("📋 Conferência e edição do Hemograma")
