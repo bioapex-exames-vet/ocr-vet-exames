@@ -210,3 +210,99 @@ if st.session_state["logado"]:
 
     col1, col2 = st.columns([8,1])
     with col2:
+        if st.button("🚪 Sair"):
+            st.session_state.clear()
+            st.rerun()
+
+    st.session_state["last_active"] = time.time()
+
+    try:
+        st.image("logo_Bioapex.png", use_column_width=True)
+    except:
+        st.write("🔹 Bioapex - Exames Veterinários")
+
+    st.title("Bioapex - Exames Veterinários")
+
+    # TEXTO OCR
+    texto = st.text_area("Cole aqui o texto extraído do OCR", height=200)
+
+    email_destino = st.text_input("Enviar PDF para email")
+
+    if texto.strip() != "":
+
+        try:
+            dados = extrair_dados(texto, marcadores_hemograma)
+        except Exception as e:
+            st.error(f"Erro ao processar texto: {e}")
+            st.stop()
+
+        st.subheader("📋 Dados do paciente")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            proprietario = st.text_input(
+                "Proprietário",
+                value=dados.get("Proprietario") or ""
+            )
+
+            paciente = st.text_input(
+                "Paciente",
+                value=dados.get("Paciente") or ""
+            )
+
+        with col2:
+            id_amostra = st.text_input(
+                "ID da Amostra",
+                value=dados.get("ID_amostra") or ""
+            )
+
+            especie = st.text_input(
+                "Espécie",
+                value=dados.get("Especie") or ""
+            )
+
+        data_exame = st.date_input("Data do exame")
+
+        st.divider()
+
+        st.subheader("📊 Conferência e edição do Hemograma")
+
+        hemograma_editado = {}
+
+        cols = st.columns(3)
+
+        for i, marcador in enumerate(marcadores_hemograma):
+
+            valor_ocr = dados["hemograma"].get(marcador)
+
+            with cols[i % 3]:
+                hemograma_editado[marcador] = st.number_input(
+                    marcador,
+                    value=float(valor_ocr) if valor_ocr is not None else 0.0,
+                    step=0.01,
+                    format="%.2f",
+                    key=f"input_{marcador}"
+                )
+
+        if st.button("📄 Processar e Gerar Documento"):
+
+            dados["hemograma"] = hemograma_editado
+            dados["Proprietario"] = proprietario
+            dados["Paciente"] = paciente
+            dados["ID_amostra"] = id_amostra
+            dados["Especie"] = especie
+
+            numero = id_amostra
+            nome = paciente
+
+            nome_docx = preencher_template(nome, numero, texto, dados, data_exame)
+
+            if nome_docx:
+
+                gerar_pdf(texto, nome_docx.replace(".docx",""))
+
+                if email_destino:
+                    enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
+
+                st.success("✅ Processamento concluído! DOCX e PDF salvos no Drive.")
