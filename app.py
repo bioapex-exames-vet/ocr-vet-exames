@@ -12,10 +12,11 @@ from email.message import EmailMessage
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+from googleapiclient.errors import HttpError
 
-# =======================
-# CONFIGURAÇÃO GERAL
-# =======================
+# =========================
+# CONFIGURAÇÕES GERAIS
+# =========================
 st.set_page_config(layout="wide")
 INACTIVITY_LIMIT = 600
 
@@ -25,22 +26,23 @@ marcadores_hemograma = [
     "RDW_CV","RDW_SD","PLT","PCT","MPV","PDW","P_LCR","P_LCC"
 ]
 
-# =======================
+# =========================
 # SESSÃO
-# =======================
+# =========================
 if "logado" not in st.session_state:
     st.session_state.logado = False
 if "last_active" not in st.session_state:
     st.session_state.last_active = time.time()
 
+# Timeout de inatividade
 if time.time() - st.session_state.last_active > INACTIVITY_LIMIT:
     st.session_state.clear()
     st.warning("⏰ Sessão expirada. Recarregue a página.")
     st.stop()
 
-# =======================
+# =========================
 # LOGIN
-# =======================
+# =========================
 if not st.session_state.logado:
     try:
         st.image("logo_Bioapex.png", use_column_width=True)
@@ -63,9 +65,9 @@ if not st.session_state.logado:
 
 st.session_state.last_active = time.time()
 
-# =======================
-# GOOGLE DRIVE CONFIG
-# =======================
+# =========================
+# CONFIGURA GOOGLE DRIVE
+# =========================
 service_account_info = json.loads(st.secrets["GDRIVE_JSON"])
 credentials = Credentials.from_service_account_info(
     service_account_info,
@@ -73,13 +75,13 @@ credentials = Credentials.from_service_account_info(
 )
 drive_service = build('drive', 'v3', credentials=credentials)
 
-TEMPLATE_DOCX_ID = st.secrets["TEMPLATE_DOCX_ID"]
-DOCX_FOLDER_ID = st.secrets["DOCX_FOLDER_ID"]
-PDF_FOLDER_ID = st.secrets["PDF_FOLDER_ID"]
+PASTA_DOCX = st.secrets["GDRIVE_FOLDER_DOCX"]  # pasta para DOCX preenchido
+PASTA_PDF = st.secrets["GDRIVE_FOLDER_PDF"]    # pasta para PDF
+TEMPLATE_DOCX_ID = st.secrets["TEMPLATE_DOCX_ID"]  # ID do Google Docs
 
-# =======================
+# =========================
 # FUNÇÕES
-# =======================
+# =========================
 def extrair_dados(texto):
     dados = {}
     match = re.search(r'Propriet[áa]rio:\s*(.+)', texto, re.I)
@@ -91,6 +93,7 @@ def extrair_dados(texto):
     match = re.search(r'Esp[ée]cie:\s*(.+)', texto, re.I)
     dados["Especie"] = match.group(1).strip() if match else ""
 
+    # Normalizar marcadores
     texto = re.sub(r'RDW[\s\r\n]+CV', 'RDW_CV', texto, flags=re.I)
     texto = re.sub(r'RDW[\s\r\n]+SD', 'RDW_SD', texto, flags=re.I)
     texto = re.sub(r'P[\s\r\n]+LCR', 'P_LCR', texto, flags=re.I)
@@ -110,44 +113,50 @@ def extrair_dados(texto):
     dados["hemograma"] = hemograma
     return dados
 
-def salvar_drive(file_bytes, nome, mime, folder_id):
+def salvar_drive(file_bytes, nome, mime, pasta_id):
     media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime)
     drive_service.files().create(
-        body={'name': nome, 'parents':[folder_id]},
+        body={'name': nome, 'parents':[pasta_id]},
         media_body=media,
         fields='id'
     ).execute()
 
 def preencher_template(nome, numero, texto, data_exame):
-    # Baixa template
+    # Exporta Google Docs como DOCX
     fh = io.BytesIO()
-    request = drive_service.files().get_media(fileId=TEMPLATE_DOCX_ID)
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    fh.seek(0)
+    try:
+        request = drive_service.files().export_media(
+            fileId=TEMPLATE_DOCX_ID,
+            mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+    except HttpError as e:
+        st.error(f"Erro ao baixar template: {e}")
+        st.stop()
 
+    fh.seek(0)
     doc = Document(fh)
+
     for p in doc.paragraphs:
         p.text = p.text.replace("{{NOME}}", nome)
         p.text = p.text.replace("{{DOCUMENTO}}", numero)
         p.text = p.text.replace("{{DATA}}", str(data_exame))
         p.text = p.text.replace("{{TEXTO}}", texto)
 
-    nome_docx = f"{nome}_{datetime.datetime.now():%Y%m%d%H%M%S}.docx"
+    nome_doc = f"{nome}_{datetime.datetime.now():%Y%m%d%H%M%S}.docx"
     buffer = io.BytesIO()
     doc.save(buffer)
+    buffer.seek(0)
 
-    salvar_drive(
-        buffer.getvalue(),
-        nome_docx,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        DOCX_FOLDER_ID
-    )
-    return nome_docx
+    salvar_drive(buffer.getvalue(), nome_doc,
+                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                 PASTA_DOCX)
+    return nome_doc
 
-def gerar_pdf(texto, nome_docx):
+def gerar_pdf(texto, nome):
     pdf = io.BytesIO()
     c = canvas.Canvas(pdf)
     y = 800
@@ -156,13 +165,7 @@ def gerar_pdf(texto, nome_docx):
         y -= 15
     c.save()
     pdf.seek(0)
-
-    salvar_drive(
-        pdf.read(),
-        f"{nome_docx}.pdf",
-        "application/pdf",
-        PDF_FOLDER_ID
-    )
+    salvar_drive(pdf.read(), f"{nome}.pdf", "application/pdf", PASTA_PDF)
 
 def enviar_email(destino, arquivo):
     msg = EmailMessage()
@@ -172,19 +175,24 @@ def enviar_email(destino, arquivo):
     msg.set_content("Segue documento em anexo.")
     with open(arquivo, "rb") as f:
         msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename=arquivo)
-    with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(st.secrets["EMAIL"], st.secrets["SENHA_EMAIL"])
         smtp.send_message(msg)
 
-# =======================
+# =========================
 # INTERFACE
-# =======================
+# =========================
 if st.session_state.logado:
     col1, col2 = st.columns([8,1])
     with col2:
         if st.button("🚪 Sair"):
             st.session_state.clear()
             st.rerun()
+
+    try:
+        st.image("logo_Bioapex.png", use_column_width=True)
+    except:
+        pass
 
     st.title("Bioapex - Exames Veterinários")
     texto = st.text_area("Cole o texto do OCR", height=200)
@@ -201,25 +209,29 @@ if st.session_state.logado:
         with col2:
             id_amostra = st.text_input("ID Amostra", dados["ID_amostra"])
             especie = st.text_input("Espécie", dados["Especie"])
-
         data_exame = st.date_input("Data do exame")
 
         st.subheader("Hemograma")
         hemograma_editado = {}
         cols = st.columns(3)
         for i, marcador in enumerate(marcadores_hemograma):
-            valor = dados["hemograma"].get(marcador, 0.0)
+            valor = dados["hemograma"].get(marcador,0.0)
             with cols[i%3]:
-                st.markdown(f":red[**{marcador}**]" if valor==0 else f"**{marcador}**")
+                if valor == 0:
+                    st.markdown(f":red[**{marcador}**]")
+                else:
+                    st.markdown(f"**{marcador}**")
                 hemograma_editado[marcador] = st.number_input(
                     "", value=float(valor), step=0.01, format="%.2f", key=marcador
                 )
 
         if st.button("Gerar Documento"):
-            nome_docx = preencher_template(
+            # Preencher DOCX
+            nome_doc = preencher_template(
                 paciente, id_amostra, texto, data_exame
             )
-            gerar_pdf(texto, nome_docx.replace(".docx",""))
-            if email_destino:
-                enviar_email(email_destino, nome_docx.replace(".docx",".pdf"))
-            st.success("Documento gerado com sucesso!")
+            if nome_doc:
+                gerar_pdf(texto, nome_doc.replace(".docx",""))
+                if email_destino:
+                    enviar_email(email_destino, nome_doc.replace(".docx",".pdf"))
+                st.success("Documento gerado com sucesso!")
