@@ -118,18 +118,7 @@ def salvar_drive(file_bytes, nome, mime):
 
 def preencher_template(nome, numero, texto, data_exame):
 
-    results = drive_service.files().list(
-        q=f"'{PARENT_FOLDER_ID}' in parents and name='modelo_padrao_hemograma_felino'",
-        fields="files(id)"
-    ).execute()
-
-    items = results.get("files", [])
-
-    if not items:
-        st.error("Template não encontrado")
-        return None
-
-    template_id = items[0]["id"]
+    template_id = st.secrets["TEMPLATE_DOCX_ID"]
 
     fh = io.BytesIO()
 
