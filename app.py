@@ -272,14 +272,26 @@ if st.session_state["logado"]:
 
         cols = st.columns(3)
 
+        hemograma_editado = {}
+        cols = st.columns(3)
+        
         for i, marcador in enumerate(marcadores_hemograma):
-
+        
             valor_ocr = dados["hemograma"].get(marcador)
-
+        
+            valor_inicial = float(valor_ocr) if valor_ocr is not None else 0.0
+        
             with cols[i % 3]:
+        
+                # Se valor for zero, mostrar marcador em vermelho
+                if valor_inicial == 0:
+                    st.markdown(f"🔴 **:red[{marcador}]**")
+                else:
+                    st.markdown(f"**{marcador}**")
+        
                 hemograma_editado[marcador] = st.number_input(
-                    marcador,
-                    value=float(valor_ocr) if valor_ocr is not None else 0.0,
+                    label="",
+                    value=valor_inicial,
                     step=0.01,
                     format="%.2f",
                     key=f"input_{marcador}"
