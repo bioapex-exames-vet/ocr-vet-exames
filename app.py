@@ -132,7 +132,12 @@ def preencher_template(nome, numero, texto, data_exame):
     template_id = items[0]["id"]
 
     fh = io.BytesIO()
-    request = drive_service.files().get_media(fileId=template_id)
+
+    try:
+        request = drive_service.files().get_media(fileId=template_id)
+    except HttpError as e:
+        st.error(f"Erro Google Drive: {e}")
+        st.stop()
 
     downloader = MediaIoBaseDownload(fh, request)
 
