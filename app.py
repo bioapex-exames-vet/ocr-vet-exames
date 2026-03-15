@@ -62,7 +62,6 @@ credentials = Credentials.from_service_account_info(
 )
 
 drive_service = build('drive', 'v3', credentials=credentials)
-PARENT_FOLDER_ID = st.secrets["GDRIVE_FOLDER_ID"]
 
 def extrair_dados(texto):
 
